@@ -1,0 +1,35 @@
+﻿@page "/"
+
+<PageTitle>Live Data</PageTitle>
+
+@foreach (var emp in EmployeesList)
+{
+    <p>@emp.Name | @emp.Title</p>
+}
+
+@using Microsoft.AspNetCore.SignalR.Client;
+@using RealtimeDataApp.Data;
+@using RealtimeDataApp.Services;
+@inject EmployeeService employeeService;
+@inject NavigationManager Navigation
+@code {
+    List<Employee> EmployeesList = new List<Employee>();
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        EmployeesList = await employeeService.GetAllEmployees();
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/employeehub"))
+            .Build();
+
+        hubConnection.On<List<Employee>>("RefreshEmployees", employees =>
+            {
+                EmployeesList = employees;
+                InvokeAsync(StateHasChanged);
+            });
+
+        await hubConnection.StartAsync();
+    }
+}
